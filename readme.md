@@ -33,21 +33,25 @@ uniform-geodesic-grid [options]
 
 ### Options
 
-- `--cell-size <km>`: Specifies the target median cell diameter in kilometers. The value must be between 40 and 7400 km. This option is mutually exclusive with `--k`.
+- `--cell-spacing <km>`: Specifies the desired spacing between points (cell centroids) in kilometers. This corresponds to the radius of the instribed circle for each hexagonal cell.
 
-- `--k <subdivisions>`: Sets the number of triangle edge subdivisions for grid generation. Must be a positive integer up to 250. This option is mutually exclusive with `--cell-size`.
+- `--cell-area <km>`: Specifies the desired area per cell in kilometers squared.
+
+- `--k <subdivisions>`: Sets the number of triangle edge subdivisions for grid generation.
 
 - `--pretty`: Pretty-formats the JSON output for easier readability.
 
+One of the options `--cell-spacing`, `--cell-area`, or `--k` should be specified. These options are mutually exclusive. Note that the resulting grid properties are not guaranteed to be an exact fit with the specified parameters, in practice the difference is less than 5%.
+
 ### Examples
 
-1. **Generate a grid with a specific cell size:**
+1. **Generate a grid with a specific cell spacing:**
 
    ```bash
-   uniform-geodesic-grid --cell-size 100
+   uniform-geodesic-grid --cell-spacing 100
    ```
 
-   This command generates a grid with a target median cell diameter of 100 km. Note that the actual cell size might differ.
+   This command aims to generate a grid with a hexagonal cell diameter of 100km. The actual returned grid has cells ranging in size between 90.3km and 108km, with median cell diameter of 100km.
 
 2. **Generate a grid with a specific number of subdivisions:**
 
@@ -60,7 +64,7 @@ uniform-geodesic-grid [options]
 3. **Generate a grid with pretty-formatted JSON output:**
 
    ```bash
-   uniform-geodesic-grid --cell-size 100 --pretty
+   uniform-geodesic-grid --cell-spacing 100 --pretty
    ```
 
    This command generates the grid and outputs the GeoJSON in a more readable format.

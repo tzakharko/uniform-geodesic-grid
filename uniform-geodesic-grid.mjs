@@ -12,27 +12,40 @@ import * as cmd from "commander";
 const args = cmd.program
   .name('uniform-geodesic-grid')
   .description('Generate a homogenously spaced hexagonal geodesic grid.')
-  .version('0.1.0')
+  .version('0.2.0')
   .addOption(new cmd
-    .Option("--cell-size <km>", "target median cell diameter in km")
+    .Option("--cell-spacing <km>", "target distance between cell centers in kilometers")
     .argParser((value) => {
        value = parseFloat(value)
        if (isNaN(value)) throw new cmd.InvalidArgumentError();
-       if (value > 7400 || value < 40) throw new cmd.InvalidArgumentError('Cell size must be between 40 and 7400 km');
+       if (value > 700 || value < 30) throw new cmd.InvalidArgumentError('Cell spacing must be between 30 and 700 km');
        return value
     })
     .conflicts("k")
+    .conflicts("cellArea")
+  )
+  .addOption(new cmd
+    .Option("--cell-area <km²>", "target cell area in km²")
+    .argParser((value) => {
+       value = parseFloat(value)
+       if (isNaN(value)) throw new cmd.InvalidArgumentError();
+       if (value > 50000 || value < 800) throw new cmd.InvalidArgumentError('Cell area must be between 800 and 50\'000 km²');
+       return value
+    })
+    .conflicts("k")
+    .conflicts("cellSpacing")
   )
   .addOption(new cmd
     .Option("--k <subdivisions>", "number of triangle edge subdivisions for grid generation")
-    .default(10)
     .argParser((value) => {
        value = parseInt(value)
        if (isNaN(value) || value <= 0 ) throw new cmd.InvalidArgumentError();
        if (value > 250) throw new cmd.InvalidArgumentError('Number of subdivisions should not exceed 250');
        return value
     })
-    .conflicts("cellSize")
+    .default(30)
+    .conflicts("cellArea")
+    .conflicts("cellSpacing")
   )
   .addOption(new cmd
     .Option("--pretty", "pretty-format the JSON output")
@@ -40,14 +53,20 @@ const args = cmd.program
   )
   .parse().opts()
 
-// determine K, the number of triangle side subdivisions
-//
-// there are 10*K^2 + 2 cells, so we can estimate the expected
-// cell size using the Earth surface area
-const earth_radius = 6371.01;
-const K = (args.cellSize)
-  ? Math.round(Math.sqrt(1.6*(earth_radius/args.cellSize)**2 - 0.2))
-  : args.k;
+// K is the number of triangle side subdivisions
+const K = (() => {
+  if ((args.cellArea == undefined) && (args.cellSpacing == undefined)) return args.k
+
+  const earth_radius = 6371.01
+  const earth_surface_area = 4 * Math.PI * earth_radius ** 2
+
+  // estimate the cell area from spacing as area of regular hexagon
+  // note: planar geometry is used for simplicity since the relative error is sufficiently low
+  const cell_area = (args.cellArea) ?? (0.5*Math.sqrt(3)*args.cellSpacing**2)
+
+  // there are 10*K^2 + 2 cells
+  return Math.round(Math.sqrt( (earth_surface_area/cell_area - 2)/10))
+})()
 
 // utility functions
 function* range(start, end) {
@@ -68,20 +87,6 @@ function* rasterizeTriangle(tri, k, includeEdges = false) {
     }
   }
 }
-// Produces an equally spaced points within the triangle
-// using k subdivisions of the barycentric coordinates
-// function* rasterizeTriangleInside(tri, k) {
-//   const step = 1.0 / k;
-//   for (let u = k - 1; u > 0; u -= 1) {
-//     for (let v = 1; v < k - u; v += 1) {
-//       const barycentrics = [u * step, v * step, (k - u - v) * step];
-//       // calculate the point coordinates from barycentrics
-//       yield tri[0].map((_, ci) => {
-//         return barycentrics.reduce((sum, w, vi) => sum + tri[vi][ci] * w, 0);
-//       });
-//     }
-//   }
-// }
 
 // a single icosahedron face as a geodesic triangle
 const theta = (Math.atan(0.5) / Math.PI) * 180;
